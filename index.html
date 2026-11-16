@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CinemaPulse Intelligence</title>
+<style>
+:root{--bg:#080b1a;--pn:#101532;--ln:#232a52;--tx:#e8ebff;--mu:#8e96c4;--vi:#8b5cf6;--tq:#2dd4bf;--am:#fbbf24;--rd:#f87171;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+.app{display:grid;grid-template-columns:216px minmax(0,1fr);min-height:100vh}
+nav{background:#0b0f26;border-right:1px solid var(--ln);padding:16px 10px;position:sticky;top:0;height:100vh;overflow:auto}
+nav .lg{font-weight:700;font-size:16px;padding:4px 10px 14px}nav .lg i{color:var(--vi);font-style:normal}
+nav button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--mu);padding:9px 10px;border-radius:8px;font:inherit;cursor:pointer}
+nav button:hover{color:var(--tx)}nav button.on{background:#1b1f4a;color:var(--tx);box-shadow:inset 3px 0 var(--vi)}
+main{padding:18px;min-width:0}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:16px}
+h1{font-size:20px;margin:0}h2{font-size:15px;margin:0 0 10px}
+select,input,textarea,button.b{background:#0b0f26;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:8px 10px;font:inherit;max-width:100%}
+button.b{background:var(--vi);border-color:var(--vi);cursor:pointer;font-weight:600}button.b.g{background:none;border-color:var(--ln)}
+:focus-visible{outline:2px solid var(--tq);outline-offset:2px}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.k{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:12px}.k small{color:var(--mu);display:block}.k b{font-size:22px}
+.bd{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid}.sim{color:var(--am);border-color:var(--am)}.re{color:var(--tq);border-color:var(--tq)}.pd{color:var(--mu);border-color:var(--mu)}
+.pos{color:var(--tq)}.neg{color:var(--am)}.neu{color:var(--mu)}.rd{color:var(--rd)}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:560px}th,td{padding:8px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}th{color:var(--mu);font-weight:500}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.f label{display:block;color:var(--mu);font-size:12px}.f input,.f select{width:100%}
+p.m{color:var(--mu);margin:4px 0}ul{margin:6px 0;padding-left:18px}
+@media(max-width:760px){.app{grid-template-columns:1fr}nav{position:static;height:auto;display:flex;gap:4px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--ln);padding:8px}nav .lg{display:none}nav button{white-space:nowrap;width:auto}}
+</style></head><body>
+<div class="app"><nav id="nv"></nav><main><header><h1 id="tt"></h1><div><select id="sl" aria-label="Sucursal"></select></div></header><div id="v"></div></main></div>
+<script>
+const $=s=>document.querySelector(s),fmt=n=>Math.round(n).toLocaleString('es-AR'),pc=n=>(n>=0?'+':'')+(n*100).toFixed(1)+'%';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const W0={hype:.35,eco:.2,comp:.15,clima:.08,vac:.15,fer:.2,tur:0},C0={hype:50,eco:50,comp:50,clima:0,vac:0,tur:50,fer:''};
+const mk=(id,name,city,prov,salas,cap,pop,base)=>({id,name,city,prov,active:true,salas,cap,pop,base,hist:[],lat:null,lon:null,wx:0,w:{...W0},c:{...C0}});
+let S=null,V='pan',RP='',ED=null;
+try{S=JSON.parse(localStorage.getItem('cpi2'))}catch(e){}
+if(!S||!S.b)S={sel:'ush',b:[Object.assign(mk('ush','Sunstar Cinemas Ushuaia','Ushuaia','Tierra del Fuego',4,1400,82000,[700,380,360,520,470,780,980]),{lat:-54.8019,lon:-68.303}),mk('demo2','Sucursal demo B','Ciudad B','Provincia B',6,2400,300000,[1200,650,620,880,820,1400,1700])]};
+const save=()=>{try{localStorage.setItem('cpi2',JSON.stringify(S))}catch(e){}};
+const cur=()=>S.b.find(x=>x.id==S.sel&&x.active)||S.b.find(x=>x.active)||S.b[0];
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const gd=s=>new Date(s+'T12:00:00').getDay();
+function baseline(b){const h=b.hist;if(h.length<14)return{dow:b.base,n:h.length,src:'sim'};
+ const s=Array(7).fill(0),c=Array(7).fill(0);h.forEach(r=>{const g=gd(r.d);s[g]+=r.n;c[g]++});
+ return{dow:s.map((v,i)=>c[i]?v/c[i]:b.base[i]),n:h.length,src:'real'}}
+function bt(b){const h=[...b.hist].sort((x,y)=>x.d<y.d?-1:1);if(h.length<28)return null;const e=[];
+ for(let i=h.length-14;i<h.length;i++){const g=gd(h[i].d),q=h.slice(0,i).filter(r=>gd(r.d)==g);if(!q.length)continue;
+  const f=q.reduce((a,r)=>a+r.n,0)/q.length;if(f>0)e.push((h[i].n-f)/f)}
+ if(e.length<5)return null;const m=e.reduce((a,x)=>a+x,0)/e.length;
+ return{mape:e.reduce((a,x)=>a+Math.abs(x),0)/e.length*100,sd:Math.sqrt(e.reduce((a,x)=>a+(x-m)**2,0)/e.length),n:e.length}}
+function conf(b){const T=bt(b);return T?(T.mape<15?'Alta':T.mape<25?'Media':'Baja'):(b.hist.length>=14?'Media-baja (sin backtest)':'Baja (línea base simulada)')}
+function fc(b){const B=baseline(b),T=bt(b),w=b.w,c=ec(b),fer=(c.fer||'').split(/[,\s]+/).filter(Boolean),sg=T?Math.max(.08,T.sd):.18,t=new Date();t.setHours(12,0,0,0);const o=[];
+ for(let i=0;i<7;i++){const d=new Date(t);d.setDate(t.getDate()+i);const iso=ymd(d);
+  const f=[['Estreno / hype',(c.hype-50)/50*w.hype],['Presión económica',-(c.eco-50)/50*w.eco],['Riesgo competitivo',-(c.comp-50)/50*w.comp],['Clima',c.clima*w.clima+wxe(b,iso)],['Vacaciones',c.vac?w.vac:0],['Feriado',fer.includes(iso)?w.fer:0],['Turismo (según evidencia)',(c.tur-50)/50*w.tur]];
+  const m=Math.max(.3,1+f.reduce((a,x)=>a+x[1],0)),base=B.dow[d.getDay()],e=Math.min(base*m,b.cap);
+  o.push({d,iso,base,f,m,e,lo:Math.max(0,e*(1-1.28*sg)),hi:Math.min(e*(1+1.28*sg),b.cap),occ:e/b.cap})}
+ return o}
+const tot=(F,k)=>F.reduce((a,x)=>a+x[k],0);
+const bdg=b=>baseline(b).src=='real'?'<span class="bd re">DATOS REALES importados</span>':'<span class="bd sim">LÍNEA BASE SIMULADA</span>';
+function rec(x,b){const r=x.m,l=conf(b).startsWith('Baja')?' (confianza baja: validar)':'';
+ return r>=1.15?'Reforzar personal y stock de candy; anticipar pico'+l:r<=.85?'Baja demanda: ajustar turnos, priorizar mantenimiento/limpieza'+l:'Operación estándar'+l}
+function chart(F){const W=640,H=240,p=24,mx=Math.max(...F.map(x=>x.hi),1)*1.12,bw=(W-p*2)/7,y=v=>H-30-(H-60)*v/mx;
+ let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Asistencia diaria esperada con rango">`;
+ F.forEach((x,i)=>{const X=p+i*bw+bw*.18,w=bw*.64,cx=X+w/2;
+  s+=`<rect x="${X}" y="${y(x.e)}" width="${w}" height="${H-30-y(x.e)}" rx="5" fill="#8b5cf6"/><line x1="${cx}" x2="${cx}" y1="${y(x.hi)}" y2="${y(x.lo)}" stroke="#fbbf24" stroke-width="2"/><line x1="${X}" x2="${X+w}" y1="${y(x.base)}" y2="${y(x.base)}" stroke="#2dd4bf" stroke-width="2" stroke-dasharray="4 3"/><text x="${cx}" y="${y(x.hi)-5}" fill="#e8ebff" font-size="11" text-anchor="middle">${fmt(x.e)}</text><text x="${cx}" y="${H-12}" fill="#8e96c4" font-size="11" text-anchor="middle">${DW[x.d.getDay()]} ${x.d.getDate()}</text>`});
+ return s+`</svg><p class="m">Barra violeta: esperado · línea turquesa: promedio histórico del día · rango ámbar: escenario pesimista–optimista (80%)</p>`}
+function expl(b,F){const a={};F.forEach(x=>x.f.forEach(([k,v])=>a[k]=(a[k]||0)+v*x.base));const tb=tot(F,'base'),A=Object.entries(a);
+ const P=A.filter(([k,v])=>v/tb>.01).sort((x,y)=>y[1]-x[1]),N=A.filter(([k,v])=>v/tb<-.01).sort((x,y)=>x[1]-y[1]),U=A.filter(([k,v])=>Math.abs(v/tb)<=.01),I=[...A].sort((x,y)=>Math.abs(y[1])-Math.abs(x[1])).slice(0,3);
+ const L=(z,c)=>z.length?z.map(([k,v])=>`<li class="${c}">${k}: ${v>0?'+':''}${fmt(v)} entradas/semana</li>`).join(''):'<li class="neu">Ninguno</li>';
+ const T=bt(b),miss=[];if(baseline(b).src=='sim')miss.push('historial real de asistencia (se usa línea base simulada)');miss.push('noticias, clima, competencia y tendencias sin conexión automática (carga manual)','datos por película y función');
+ const d=tot(F,'e')/tb-1;
+ return `<p>Se espera una concurrencia <b>${Math.abs(d)<.02?'en línea con':d>0?'superior a':'inferior a'}</b> el promedio histórico (${pc(d)})${P.length?', impulsada por '+P.map(x=>x[0].toLowerCase()).join(', '):''}${N.length?'; moderada por '+N.map(x=>x[0].toLowerCase()).join(', '):''}.</p>
+ <div class="f"><div><h2 class="pos">Factores positivos</h2><ul>${L(P,'pos')}</ul></div><div><h2 class="neg">Factores negativos</h2><ul>${L(N,'neg')}</ul></div><div><h2>Neutros</h2><ul>${U.length?U.map(x=>`<li class="neu">${x[0]}</li>`).join(''):'<li class="neu">Ninguno</li>'}</ul></div></div>
+ <p class="m"><b>Más influyentes:</b> ${I.map(x=>x[0]).join(', ')}</p>
+ <p class="m"><b>Incertidumbre:</b> ${T?'según error observado en backtest (MAPE '+T.mape.toFixed(1)+'%, '+T.n+' días)':'±18% por defecto, no validada con datos reales'}</p>
+ <p class="m"><b>Confianza:</b> ${conf(b)}</p><p class="m"><b>Datos faltantes:</b> ${miss.join('; ')}</p>`}
+function kp(l,v,c){return `<div class="k"><small>${l}</small><b class="${c||''}">${v}</b></div>`}
+function vPan(b){const F=fc(b),e=tot(F,'e'),bs=tot(F,'base'),c=ec(b);
+ return `<p>${bdg(b)} ${S.auto.on?'<span class="bd re">Hype, economía, clima y feriados: automático</span>':'<span class="bd pd">Factores de contexto: manual</span>'}</p><div class="grid">${kp('Asistencia esperada (7 días)',fmt(e))}${kp('Variación vs promedio',pc(e/bs-1),e>=bs?'pos':'neg')}${kp('Índice de demanda local',(100*e/bs).toFixed(0)+' <small>(100 = promedio)</small>')}${kp('Ocupación proyectada',(100*e/(b.cap*7)).toFixed(0)+'%')}${kp('Confianza',conf(b).split(' ')[0])}${kp('Hype cinematográfico',c.hype+'/100')}${kp('Presión económica',c.eco+'/100',c.eco>65?'neg':'')}${kp('Riesgo competitivo',c.comp+'/100',c.comp>65?'neg':'')}${kp('Conversión interés→compra','N/D <small>requiere historial por película</small>')}</div>
+ <div class="card"><h2>Asistencia diaria esperada</h2>${chart(F)}</div><div class="card"><h2>¿Por qué?</h2>${expl(b,F)}</div>`}
+function vSem(b){const F=fc(b),e=tot(F,'e'),T=bt(b),lo=tot(F,'lo'),hi=tot(F,'hi');
+ return `<div class="grid">${kp('Pesimista',fmt(lo),'neg')}${kp('Esperado',fmt(e))}${kp('Optimista',fmt(hi),'pos')}</div><div class="card"><h2>Explicación del pronóstico</h2>${expl(b,F)}</div>
+ <div class="card"><h2>Evaluación de precisión</h2>${T?`<p>Validación temporal sobre los últimos ${T.n} días del historial, usando solo datos anteriores a cada día: error porcentual medio <b>${T.mape.toFixed(1)}%</b>. El backtest evalúa la línea base por día de semana; los factores de contexto no se evalúan porque no hay contexto histórico guardado.</p>`:'<p class="m">Se necesitan al menos 28 días de historial real importado para calcular el backtest. Hasta entonces no hay medida de precisión.</p>'}</div>`}
+function vDia(b){const F=fc(b);
+ return `<div class="card tw"><table><tr><th>Día</th><th>Promedio</th><th>Factor</th><th>Pesimista</th><th>Esperado</th><th>Optimista</th><th>Ocup.</th><th>Recomendación</th></tr>${F.map(x=>`<tr><td>${DW[x.d.getDay()]} ${x.d.getDate()}/${x.d.getMonth()+1}</td><td>${fmt(x.base)}</td><td class="${x.m>=1?'pos':'neg'}">×${x.m.toFixed(2)}</td><td>${fmt(x.lo)}</td><td><b>${fmt(x.e)}</b></td><td>${fmt(x.hi)}</td><td>${(x.occ*100).toFixed(0)}%</td><td style="white-space:normal;min-width:240px">${rec(x,b)}</td></tr>`).join('')}</table></div><p class="m">Pronóstico por película y por función: pendiente (requiere historial a ese nivel).</p>`}
+function vCtx(b){const c=b.c,w=b.w,sl=(k,l)=>`<div><label>${l}: <b>${c[k]}</b></label><input type="range" min="0" max="100" value="${c[k]}" onchange="sc('${k}',+this.value)"></div>`;
+ const wn=(k,l)=>`<div><label>${l}</label><input type="number" step=".01" min="0" max="1" value="${w[k]}" onchange="sw('${k}',+this.value)"></div>`;
+ return `<div class="card"><h2>Contexto de la semana <span class="bd pd">carga manual</span></h2><p class="m">Con las fuentes automáticas activas, hype, economía y feriados se toman de la web cuando hay datos y pisan estos valores. Competencia, turismo y vacaciones siguen manuales.</p><div class="f">${sl('hype','Hype de estrenos')}${sl('eco','Presión económica local')}${sl('comp','Riesgo competitivo')}${sl('tur','Afluencia turística')}
+ <div><label>Clima</label><select onchange="sc('clima',+this.value)">${[[-1,'Adverso'],[0,'Normal'],[1,'Favorable']].map(o=>`<option value="${o[0]}" ${c.clima==o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
+ <div><label>Vacaciones escolares</label><select onchange="sc('vac',+this.value)"><option value="0" ${c.vac?'':'selected'}>No</option><option value="1" ${c.vac?'selected':''}>Sí</option></select></div>
+ <div><label>Feriados (AAAA-MM-DD, separados por coma)</label><input value="${esc(c.fer)}" onchange="sc('fer',this.value)"></div></div></div>
+ <div class="card"><h2>Ponderaciones del modelo</h2><p class="m">Cada factor ajusta el promedio histórico del día. El turismo parte en 0 porque no debe sumar sin evidencia observada: súbelo solo si tu historial lo respalda.</p><div class="f">${wn('hype','Hype')}${wn('eco','Economía')}${wn('comp','Competencia')}${wn('clima','Clima')}${wn('vac','Vacaciones')}${wn('fer','Feriado')}${wn('tur','Turismo')}</div></div>`}
+function vImp(b){const h=b.hist;
+ return `<div class="card"><h2>Importar historial: ${esc(b.name)}</h2><p class="m">CSV con columnas <b>fecha</b> (AAAA-MM-DD o DD/MM/AAAA) y <b>entradas</b>. Opcionales: sucursal, película, funcion, capacidad, precio. Varias filas del mismo día se suman. Si hay columna <i>sucursal</i>, solo se importan las filas de esta sucursal. Excel (.xlsx): pendiente, exportalo a CSV.</p>
+ <input type="file" accept=".csv,.txt" onchange="this.files[0]&&this.files[0].text().then(imp)"><p class="m">o pegá el contenido:</p><textarea id="ta" rows="5" style="width:100%" placeholder="fecha,entradas&#10;2026-11-01,412"></textarea><p><button class="b" onclick="imp($('#ta').value)">Importar</button> <button class="b g" onclick="clr()">Borrar historial de esta sucursal</button></p>${RP}</div>
+ <div class="card"><h2>Historial cargado</h2><p>${bdg(b)} ${h.length} días${h.length?' · '+[...h].sort((x,y)=>x.d<y.d?-1:1)[0].d+' a '+[...h].sort((x,y)=>x.d<y.d?-1:1).pop().d:''}</p><p class="m">Con 14 o más días reales, el modelo reemplaza la línea base simulada por promedios reales por día de semana.</p></div>`}
+function vCmp(){const R=S.b.filter(x=>x.active).map(b=>{const F=fc(b),e=tot(F,'e'),bs=tot(F,'base');return{b,e,v:e/bs-1,o:e/(b.cap*7)}});
+ return `<div class="card tw"><h2>Comparación multisucursal (próximos 7 días)</h2><table><tr><th>Sucursal</th><th>Ciudad</th><th>Esperado</th><th>Variación</th><th>Ocupación</th><th>Confianza</th><th>Datos</th><th>Alerta</th></tr>${R.map(r=>`<tr><td>${esc(r.b.name)}</td><td>${esc(r.b.city)}</td><td>${fmt(r.e)}</td><td class="${r.v>=0?'pos':'neg'}">${pc(r.v)}</td><td>${(r.o*100).toFixed(0)}%</td><td>${conf(r.b).split(' ')[0]}</td><td>${bdg(r.b)}</td><td>${Math.abs(r.v)>.25?'<span class="neg">Desvío fuerte</span>':'—'}</td></tr>`).join('')}</table></div><p class="m">Las demás comparaciones (sensibilidad económica, respuesta a estrenos, tendencias nacionales) requieren historial real en varias sucursales.</p>`}
+function vSuc(){const e=ED?S.b.find(x=>x.id==ED):null,v=k=>e?esc(e[k]):'',n=(k,d)=>`<div><label>${k[1]}</label><input id="f_${k[0]}" value="${e?esc(e[k[0]]):d}"></div>`;
+ return `<div class="card tw"><h2>Sucursales</h2><table><tr><th>Nombre</th><th>Ciudad</th><th>Estado</th><th></th></tr>${S.b.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.city)}, ${esc(x.prov)}</td><td>${x.active?'<span class="pos">Activa</span>':'<span class="neu">Inactiva</span>'}</td><td><button class="b g" onclick="ED='${x.id}';go()">Editar</button> <button class="b g" onclick="tg('${x.id}')">${x.active?'Desactivar':'Activar'}</button></td></tr>`).join('')}</table></div>
+ <div class="card"><h2>${e?'Editar: '+esc(e.name):'Nueva sucursal'}</h2><div class="f">${n(['name','Nombre comercial'],'')}${n(['city','Ciudad'],'')}${n(['prov','Provincia'],'')}${n(['salas','Salas'],4)}${n(['cap','Capacidad diaria (butacas × funciones)'],1000)}${n(['pop','Población'],0)}${n(['lat','Latitud (clima)'],'')}${n(['lon','Longitud (clima)'],'')}<div style="grid-column:1/-1"><label>Línea base simulada por día (Dom a Sáb, separados por coma) · se reemplaza al importar historial real</label><input id="f_base" value="${e?e.base.join(','):'300,200,200,250,250,400,450'}"></div></div><p><button class="b" onclick="sv()">Guardar</button> ${e?'<button class="b g" onclick="ED=null;go()">Nueva</button>':''}</p></div>`}
+function vEst(){const L=(t,c,a)=>`<div class="card"><h2><span class="bd ${c}">${t}</span></h2><ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
+ return L('IMPLEMENTADO','re',['Gestión multisucursal (alta, edición, desactivación) sin tocar código','Importación CSV con validación, detección de anomalías y huecos','Línea base por día de semana aprendida del historial real','Ajuste por factores ponderados y configurables por sucursal','Escenarios pesimista / esperado / optimista','Backtest con validación temporal (sin usar datos futuros)','Explicabilidad, recomendaciones operativas y comparación multisucursal','Fuentes automáticas: clima (Open-Meteo), feriados (ArgentinaDatos), inflación (INDEC vía datos.gob.ar) y estrenos (TMDB)'])+L('SIMULADO','sim',['Líneas base de las sucursales de ejemplo (editables, hasta importar historial real)'])+L('MANUAL','pd',['Competencia, turismo, vacaciones escolares y feriados locales (Contexto). Clima, feriados nacionales, economía y hype salen de la web si las fuentes automáticas están activas'])+L('PENDIENTE DE CONEXIÓN','pd',['Noticias automáticas y competidores (requieren el recolector en Python)','Importación .xlsx, pronóstico por película y función','Gradient boosting y modelos jerárquicos (cuando haya historial suficiente)','Backend FastAPI + PostgreSQL, autenticación, roles y datos compartidos entre usuarios'])+'<p class="m">Este prototipo guarda los datos en el navegador de cada persona (no se comparten).</p>'}
+const NV=[['pan','Panorama general',vPan],['sem','Pronóstico semanal',vSem],['dia','Pronóstico diario',vDia],['aut','Fuentes automáticas',vAut],['ctx','Contexto territorial',vCtx],['imp','Importación de datos',vImp],['cmp','Multisucursal',vCmp],['suc','Gestión de sucursales',vSuc],['est','Estado del sistema',vEst]];
+function go(){const b=cur();$('#nv').innerHTML='<div class="lg"><i>◉</i> CinemaPulse</div>'+NV.map(n=>`<button class="${n[0]==V?'on':''}" onclick="V='${n[0]}';go()">${n[1]}</button>`).join('');
+ $('#sl').innerHTML=S.b.filter(x=>x.active).map(x=>`<option value="${x.id}" ${x.id==b.id?'selected':''}>${esc(x.name)}</option>`).join('');
+ const n=NV.find(x=>x[0]==V);$('#tt').textContent=n[1];$('#v').innerHTML=n[2](b)}
+$('#sl').onchange=e=>{S.sel=e.target.value;save();RP='';go();refreshAll()};
+const sc=(k,v)=>{cur().c[k]=v;save();go()},sw=(k,v)=>{cur().w[k]=v;save();go()};
+const tg=id=>{const x=S.b.find(z=>z.id==id);if(x.active&&S.b.filter(z=>z.active).length<2)return;x.active=!x.active;save();go()};
+const clr=()=>{cur().hist=[];RP='';save();go()};
+function sv(){const g=k=>$('#f_'+k).value.trim(),base=g('base').split(',').map(Number);if(!g('name')||base.length!=7||base.some(isNaN))return alert('Completá el nombre y 7 valores numéricos de línea base.');
+ const o={name:g('name'),city:g('city'),prov:g('prov'),salas:+g('salas')||1,cap:+g('cap')||1,pop:+g('pop')||0,lat:g('lat')===''?null:+g('lat'),lon:g('lon')===''?null:+g('lon'),base};
+ if(ED)Object.assign(S.b.find(x=>x.id==ED),o);else{const id=g('name').toLowerCase().replace(/\W+/g,'-')+'-'+Date.now()%1e4,n=mk(id,'','','',1,1,0,base);Object.assign(n,o);S.b.push(n);S.sel=id}
+ ED=null;save();go()}
+function imp(t){const b=cur(),L=t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim());if(L.length<2){RP='<p class="rd">Sin filas para importar.</p>';return go()}
+ const dl=(L[0].match(/;/g)||[]).length>(L[0].match(/,/g)||[]).length?';':',',H=L[0].split(dl).map(x=>x.trim().toLowerCase()),ix=k=>H.findIndex(h=>h.startsWith(k)),iD=ix('fecha'),iN=ix('entradas'),iS=ix('sucursal');
+ if(iD<0||iN<0){RP='<p class="rd">Faltan columnas obligatorias: fecha y entradas.</p>';return go()}
+ const m=new Map();let bad=0,skip=0,mm;
+ for(const l of L.slice(1)){const c=l.split(dl).map(x=>x.trim());
+  if(iS>=0&&c[iS]&&![b.id,b.name,b.city].some(x=>x.toLowerCase()==c[iS].toLowerCase())){skip++;continue}
+  let d=c[iD]||'';if(mm=d.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/))d=`${mm[3]}-${mm[2].padStart(2,'0')}-${mm[1].padStart(2,'0')}`;
+  const n=Number(String(c[iN]).replace(',','.'));
+  if(!/^\d{4}-\d\d-\d\d$/.test(d)||isNaN(new Date(d))||c[iN]===''||!isFinite(n)||n<0){bad++;continue}
+  m.set(d,(m.get(d)||0)+n)}
+ const all=new Map(b.hist.map(r=>[r.d,r.n]));m.forEach((n,d)=>all.set(d,n));b.hist=[...all].map(([d,n])=>({d,n})).sort((x,y)=>x.d<y.d?-1:1);
+ const v=[...m.values()],mu=v.reduce((a,x)=>a+x,0)/(v.length||1),sd=Math.sqrt(v.reduce((a,x)=>a+(x-mu)**2,0)/(v.length||1));
+ const an=v.filter(x=>(sd>0&&Math.abs(x-mu)>3*sd)||x>b.cap*1.2).length,ds=[...m.keys()].sort(),gap=ds.length?Math.round((new Date(ds[ds.length-1])-new Date(ds[0]))/864e5)+1-ds.length:0;
+ RP=`<p class="${m.size?'pos':'rd'}"><b>${m.size} días importados</b> · ${bad} filas rechazadas (fecha o entradas inválidas) · ${skip} de otra sucursal · ${an} anomalías (>3σ o sobre capacidad) · ${gap} días sin datos en el rango</p>`;save();go()}
+S.auto=Object.assign({on:true,tmdb:'',eid:'148.3_INIVELNAL_DICI_M_26'},S.auto);
+const ST={},AU=b=>b.auto||(b.auto={}),clamp=(v,a,z)=>Math.max(a,Math.min(z,v));
+function ec(b){const c={...b.c},a=S.auto;if(a.on){if(a.eco)c.eco=a.eco.score;if(a.hype)c.hype=a.hype.score;c.fer=(c.fer||'')+','+(a.fer||[]).join(',')}return c}
+function wxe(b,iso){const w=AU(b).wx;if(!S.auto.on||!w||!b.wx)return 0;const d=w.find(x=>x.d==iso);return d&&d.bad?b.wx*b.w.clima:0}
+const jf=async u=>{const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()};
+async function rWx(b){if(b.lat==null||b.lon==null)throw new Error('La sucursal no tiene coordenadas');
+ const j=await jf(`https://api.open-meteo.com/v1/forecast?latitude=${b.lat}&longitude=${b.lon}&daily=precipitation_sum,wind_speed_10m_max,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`),d=j.daily;
+ AU(b).wx=d.time.map((t,i)=>({d:t,p:d.precipitation_sum[i],v:d.wind_speed_10m_max[i],tx:d.temperature_2m_max[i],tn:d.temperature_2m_min[i],bad:d.precipitation_sum[i]>=5||d.wind_speed_10m_max[i]>=50}))}
+async function rFer(){const y=new Date().getFullYear();let l=await jf('https://api.argentinadatos.com/v1/feriados/'+y);if(new Date().getMonth()>9)l=l.concat(await jf('https://api.argentinadatos.com/v1/feriados/'+(y+1)));S.auto.fer=l.map(x=>x.fecha);S.auto.ferl=l.map(x=>[x.fecha,x.nombre])}
+async function rEco(){const j=await jf('https://apis.datos.gob.ar/series/api/series/?format=json&limit=14&sort=desc&ids='+encodeURIComponent(S.auto.eid)),d=j.data;
+ if(!d||d.length<13)throw new Error('La serie no devolvió datos suficientes');const mm=d[0][1]/d[1][1]-1,yy=d[0][1]/d[12][1]-1;S.auto.eco={per:d[0][0],mm,yy,score:clamp(Math.round(20+mm*100*14),5,95)}}
+async function rHype(){const k=S.auto.tmdb;if(!k)throw new Error('Falta la clave de TMDB');const q=p=>jf(`https://api.themoviedb.org/3/movie/${p}?api_key=${encodeURIComponent(k)}&language=es-AR&region=AR&page=1`);
+ const[n,u]=await Promise.all([q('now_playing'),q('upcoming')]),top=n.results.sort((a,b)=>b.popularity-a.popularity).slice(0,5),x=top.reduce((s,m)=>s+m.popularity,0),td=ymd(new Date()),lim=ymd(new Date(Date.now()+14*864e5));
+ const H=S.auto.hh||(S.auto.hh=[]);if(!H.length||H[H.length-1].d!=td){H.push({d:td,x});if(H.length>60)H.shift()}else H[H.length-1].x=x;
+ const xs=H.map(h=>h.x).sort((a,b)=>a-b),med=xs[xs.length>>1];
+ S.auto.hype={score:H.length<3?50:clamp(Math.round(50+30*(x-med)/med),10,90),x,n:H.length,top:top.map(m=>[m.title,m.popularity,m.vote_count]),up:u.results.filter(m=>m.release_date>=td&&m.release_date<=lim).map(m=>[m.title,m.release_date,m.popularity])}}
+async function run(k,f){ST[k]={run:1};try{await f();ST[k]={ok:1,ts:Date.now()}}catch(e){ST[k]={err:String(e.message||e)}}}
+async function refreshAll(){if(!S.auto.on)return;const b=cur();await Promise.all([run('wx',()=>rWx(b)),run('fer',rFer),run('eco',rEco),run('hype',rHype)]);save();if(!['imp','suc'].includes(V))go()}
+function vAut(b){const a=S.auto,A=AU(b),H=a.hype,E=a.eco,wk=A.wx||[],td=ymd(new Date()),lim=ymd(new Date(Date.now()+7*864e5)),fr=(a.ferl||[]).filter(x=>x[0]>=td&&x[0]<=lim),
+ st=k=>{const s=ST[k]||{};return s.run?'<span class="bd pd">Consultando…</span>':s.ok?'<span class="bd re">OK '+new Date(s.ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</span>':s.err?'<span class="bd sim">'+esc(s.err)+'</span>':'<span class="bd pd">Sin consultar</span>'};
+ return `<div class="card"><h2>Fuentes automáticas ${a.on?'<span class="bd re">ACTIVAS</span>':'<span class="bd pd">APAGADAS</span>'}</h2><p class="m">Al abrir y cada hora, CinemaPulse consulta estas fuentes y las usa en el pronóstico. Si ves "Failed to fetch" estás en la versión publicada: las conexiones externas solo funcionan en el archivo local.</p><p><button class="b" onclick="S.auto.on=!S.auto.on;save();go();refreshAll()">${a.on?'Desactivar':'Activar'}</button> <button class="b g" onclick="refreshAll()">Actualizar ahora</button></p></div>
+ <div class="card"><h2>Clima ${st('wx')} <span class="bd re">Open-Meteo</span></h2>${wk.length?`<div class="tw"><table><tr><th>Día</th><th>Lluvia mm</th><th>Viento km/h</th><th>Mín/Máx °C</th><th>Mal clima</th></tr>${wk.map(x=>`<tr><td>${DW[gd(x.d)]} ${x.d.slice(8)}</td><td>${x.p}</td><td>${x.v}</td><td>${x.tn} / ${x.tx}</td><td>${x.bad?'<span class="neg">Sí</span>':'—'}</td></tr>`).join('')}</table></div>`:'<p class="m">Sin datos todavía (la sucursal necesita latitud y longitud en Gestión de sucursales).</p>'}
+ <p class="m">Mal clima = lluvia de 5 mm o más, o viento de 50 km/h o más. No asumo causalidad: elegí el efecto según lo que observes en tus datos.</p><select onchange="cur().wx=+this.value;save();go()">${[[-1,'Reduce la asistencia'],[0,'Sin efecto (por defecto)'],[1,'Aumenta la asistencia']].map(o=>`<option value="${o[0]}" ${b.wx==o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
+ <div class="card"><h2>Feriados ${st('fer')} <span class="bd re">ArgentinaDatos</span></h2><p>${fr.length?fr.map(x=>x[0]+': '+esc(x[1])).join(' · '):'Ningún feriado nacional en los próximos 7 días.'}</p><p class="m">Solo feriados nacionales. Los provinciales o locales se cargan a mano en Contexto territorial. Vacaciones escolares: manual.</p></div>
+ <div class="card"><h2>Economía (INDEC) ${st('eco')} <span class="bd re">datos.gob.ar</span></h2>${E?`<div class="grid">${kp('Inflación mensual ('+E.per.slice(0,7)+')',(E.mm*100).toFixed(1)+'%')}${kp('Inflación interanual',(E.yy*100).toFixed(1)+'%')}${kp('Presión económica (0-100)',E.score)}</div>`:''}<p class="m">La presión económica es una regla simple (20 + 14 × inflación mensual en %), no un dato oficial. Cuando tengas historial, conviene calibrarla. Serie usada (debe ser un índice de nivel, no una variación):</p><input style="width:100%" value="${esc(a.eid)}" onchange="S.auto.eid=this.value.trim();save();refreshAll()"></div>
+ <div class="card"><h2>Estrenos y hype ${st('hype')} <span class="bd re">TMDB</span></h2><p class="m">Pegá tu clave gratuita de TMDB (themoviedb.org → Configuración → API). Se guarda solo en este navegador.</p><input style="width:100%" type="password" value="${esc(a.tmdb)}" onchange="S.auto.tmdb=this.value.trim();save();refreshAll()">
+ ${H?`<div class="grid">${kp('Hype nacional (0-100)',H.score)}${kp('Lecturas diarias',H.n)}</div><div class="tw"><table><tr><th>En cartel (Argentina)</th><th>Popularidad</th><th>Votos</th></tr>${H.top.map(m=>`<tr><td>${esc(m[0])}</td><td>${m[1].toFixed(0)}</td><td>${m[2]}</td></tr>`).join('')}</table></div><p>Próximos 14 días: ${H.up.length?H.up.map(m=>esc(m[0])+' ('+m[1]+')').join(' · '):'sin estrenos listados'}</p><p class="m">El hype compara la popularidad de hoy contra tu propia mediana; con menos de 3 lecturas queda en 50 (neutro). Es interés nacional, no ventas.</p>`:''}</div>
+ <div class="card"><h2><span class="bd pd">PENDIENTE</span> Noticias y competidores</h2><p class="m">No tienen API abierta. Se resuelven con el recolector en Python (siguiente paso).</p></div>`}
+
+go();refreshAll();setInterval(refreshAll,36e5);
+</script></body></html>
